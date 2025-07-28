@@ -115,11 +115,18 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setDatabaseEnabled(true);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         
-        // Cache Settings for better connectivity
+        // Network and Cache Settings for better connectivity
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        webSettings.setBlockNetworkImage(false);
+        webSettings.setBlockNetworkLoads(false);
+        webSettings.setGeolocationEnabled(true);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
         
-        // Enhanced User Agent
-        String userAgent = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
+        // Enhanced User Agent - Real Chrome mobile
+        String userAgent = "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.193 Mobile Safari/537.36";
         webSettings.setUserAgentString(userAgent);
 
         // WebViewClient with enhanced error handling
@@ -154,21 +161,24 @@ public class MainActivity extends AppCompatActivity {
                 
                 if (request.isForMainFrame()) {
                     String errorUrl = request.getUrl().toString();
-                    String errorMessage = "Connection failed for: " + errorUrl;
                     
-                    // Try to load cached version
-                    webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    // Try alternative approaches for failed URLs
+                    if (errorUrl.contains("facebook.com")) {
+                        // Try mobile version for Facebook
+                        String mobileUrl = errorUrl.replace("www.facebook.com", "m.facebook.com");
+                        if (!mobileUrl.equals(errorUrl)) {
+                            view.loadUrl(mobileUrl);
+                            return;
+                        }
+                    }
                     
-                    Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_LONG).show();
-                    
-                    // Reset cache mode after error
-                    webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+                    Toast.makeText(MainActivity.this, "Connection failed: " + error.getDescription(), Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                // Accept SSL errors (use with caution in production)
+                // Accept SSL errors to avoid connection issues
                 handler.proceed();
             }
 
@@ -188,7 +198,9 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 
-                return false;
+                // Load URL in the same WebView
+                view.loadUrl(url);
+                return true;
             }
         });
 
