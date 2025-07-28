@@ -3,6 +3,7 @@ package com.naxobrowser;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
 import android.os.Bundle;
@@ -13,6 +14,8 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -28,6 +31,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,29 +42,29 @@ public class MainActivity extends AppCompatActivity {
     private ImageView lockIcon, braveShieldIcon, menuIcon;
     private ProgressBar progressBar;
 
-    // --- NAYA STEP 1: ActivityResultLauncher declare karein ---
-    // Yeh CookieManagerActivity se wapas aane wale result ko handle karega.
+    // URL History Management
+    private List<String> urlHistory;
+    private int currentHistoryIndex = -1;
+    private SharedPreferences sharedPreferences;
+    private static final String PREF_NAME = "BrowserPrefs";
+    private static final String LAST_URL_KEY = "lastUrl";
+
+    // ActivityResultLauncher for CookieManagerActivity
     private ActivityResultLauncher<Intent> cookieActivityLauncher;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState ) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_2);
 
-        // Views ko initialize karein
-        webView = findViewById(R.id.webView);
-        urlEditText = findViewById(R.id.urlEditText);
-        progressBar = findViewById(R.id.progressBar);
-        lockIcon = findViewById(R.id.lockIcon);
-        braveShieldIcon = findViewById(R.id.braveShieldIcon);
-        menuIcon = findViewById(R.id.menuIcon);
-        backButton = findViewById(R.id.backButton);
-        forwardButton = findViewById(R.id.forwardButton);
-        refreshButton = findViewById(R.id.refreshButton);
-        homeButton = findViewById(R.id.homeButton);
+        // Initialize Views
+        initializeViews();
+        
+        // Initialize URL History
+        urlHistory = new ArrayList<>();
+        sharedPreferences = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
-        // --- NAYA STEP 2: Launcher ko register karein ---
-        // Yeh batata hai ke jab activity se result wapas aaye to kya karna hai.
+        // Register ActivityResultLauncher
         cookieActivityLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -72,8 +77,36 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
 
-        // --- WebView ki Final Settings ---
+        // Setup WebView
+        setupWebView();
+        
+        // Setup Button Listeners
+        setupButtonListeners();
+        
+        // Setup Address Bar
+        setupAddressBar();
+
+        // Load last URL or default homepage
+        loadInitialPage();
+    }
+
+    private void initializeViews() {
+        webView = findViewById(R.id.webView);
+        urlEditText = findViewById(R.id.urlEditText);
+        progressBar = findViewById(R.id.progressBar);
+        lockIcon = findViewById(R.id.lockIcon);
+        braveShieldIcon = findViewById(R.id.braveShieldIcon);
+        menuIcon = findViewById(R.id.menuIcon);
+        backButton = findViewById(R.id.backButton);
+        forwardButton = findViewById(R.id.forwardButton);
+        refreshButton = findViewById(R.id.refreshButton);
+        homeButton = findViewById(R.id.homeButton);
+    }
+
+    private void setupWebView() {
         WebSettings webSettings = webView.getSettings();
+        
+        // Basic Settings
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setLoadsImagesAutomatically(true);
@@ -81,30 +114,83 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setDatabaseEnabled(true);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        String userAgent = "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.58 Mobile Safari/537.36";
+        
+        // Cache Settings for better connectivity
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        webSettings.setAppCacheEnabled(true);
+        webSettings.setAppCachePath(getCacheDir().getAbsolutePath());
+        
+        // Enhanced User Agent
+        String userAgent = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
         webSettings.setUserAgentString(userAgent);
 
-        // WebViewClient
+        // WebViewClient with enhanced error handling
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
                 urlEditText.setText(url);
                 updateLockIcon(url);
+                progressBar.setVisibility(View.VISIBLE);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                backButton.setEnabled(view.canGoBack());
-                forwardButton.setEnabled(view.canGoForward());
-                backButton.setAlpha(view.canGoBack() ? 1.0f : 0.5f);
-                forwardButton.setAlpha(view.canGoForward() ? 1.0f : 0.5f);
+                
+                // Add to history if it's a new URL
+                addToHistory(url);
+                
+                // Update navigation buttons
+                updateNavigationButtons();
+                
+                // Save current URL
+                saveCurrentUrl(url);
+                
+                progressBar.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                
+                if (request.isForMainFrame()) {
+                    String errorUrl = request.getUrl().toString();
+                    String errorMessage = "Connection failed for: " + errorUrl;
+                    
+                    // Try to load cached version
+                    webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    
+                    Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+                    
+                    // Reset cache mode after error
+                    webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+                }
             }
 
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                // Accept SSL errors (use with caution in production)
                 handler.proceed();
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                
+                // Handle special URL schemes
+                if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setData(request.getUrl());
+                        startActivity(intent);
+                        return true;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                return false;
             }
         });
 
@@ -120,61 +206,124 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
 
-        // Address Bar Logic
+    private void setupButtonListeners() {
+        backButton.setOnClickListener(v -> goBackInHistory());
+        forwardButton.setOnClickListener(v -> goForwardInHistory());
+        refreshButton.setOnClickListener(v -> webView.reload());
+        homeButton.setOnClickListener(v -> loadUrl("https://www.google.com"));
+        braveShieldIcon.setOnClickListener(v -> Toast.makeText(this, "Shield Clicked!", Toast.LENGTH_SHORT).show());
+        menuIcon.setOnClickListener(this::showMenu);
+    }
+
+    private void setupAddressBar() {
         urlEditText.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_GO) {
+            if (actionId == EditorInfo.IME_ACTION_GO || 
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                
                 String input = urlEditText.getText().toString().trim();
                 if (!input.isEmpty()) {
                     hideKeyboard();
                     urlEditText.clearFocus();
-                    if (Patterns.WEB_URL.matcher(input).matches() || input.contains(".")) {
-                        webView.loadUrl(input.startsWith("http" ) ? input : "https://" + input );
+                    
+                    String urlToLoad;
+                    if (Patterns.WEB_URL.matcher(input).matches() || 
+                        input.contains(".") && !input.contains(" ")) {
+                        urlToLoad = input.startsWith("http") ? input : "https://" + input;
                     } else {
                         try {
-                            String searchUrl = "https://www.google.com/search?q=" + URLEncoder.encode(input, "UTF-8" );
-                            webView.loadUrl(searchUrl);
+                            urlToLoad = "https://www.google.com/search?q=" + URLEncoder.encode(input, "UTF-8");
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            urlToLoad = "https://www.google.com/search?q=" + input.replace(" ", "+");
                         }
                     }
+                    loadUrl(urlToLoad);
                 }
                 return true;
             }
             return false;
         });
+    }
 
-        // Button Click Listeners
-        backButton.setOnClickListener(v -> { if (webView.canGoBack()) webView.goBack(); });
-        forwardButton.setOnClickListener(v -> { if (webView.canGoForward()) webView.goForward(); });
-        refreshButton.setOnClickListener(v -> webView.reload());
-        homeButton.setOnClickListener(v -> webView.loadUrl("https://www.google.com" ));
-        braveShieldIcon.setOnClickListener(v -> Toast.makeText(this, "Shield Clicked!", Toast.LENGTH_SHORT).show());
-        menuIcon.setOnClickListener(this::showMenu); // Updated to method reference
+    private void loadUrl(String url) {
+        webView.loadUrl(url);
+    }
 
-        // Shuru mein Google load karein
-        webView.loadUrl("https://www.google.com" );
+    private void loadInitialPage() {
+        String lastUrl = sharedPreferences.getString(LAST_URL_KEY, "https://www.google.com");
+        loadUrl(lastUrl);
+    }
+
+    private void addToHistory(String url) {
+        if (url != null && !url.equals("about:blank")) {
+            // Remove any URLs after current index (when going back and then to new URL)
+            if (currentHistoryIndex < urlHistory.size() - 1) {
+                urlHistory = urlHistory.subList(0, currentHistoryIndex + 1);
+            }
+            
+            // Add new URL if it's different from the last one
+            if (urlHistory.isEmpty() || !urlHistory.get(urlHistory.size() - 1).equals(url)) {
+                urlHistory.add(url);
+                currentHistoryIndex = urlHistory.size() - 1;
+            }
+        }
+    }
+
+    private void goBackInHistory() {
+        if (currentHistoryIndex > 0) {
+            currentHistoryIndex--;
+            String url = urlHistory.get(currentHistoryIndex);
+            webView.loadUrl(url);
+            updateNavigationButtons();
+        } else if (webView.canGoBack()) {
+            webView.goBack();
+        }
+    }
+
+    private void goForwardInHistory() {
+        if (currentHistoryIndex < urlHistory.size() - 1) {
+            currentHistoryIndex++;
+            String url = urlHistory.get(currentHistoryIndex);
+            webView.loadUrl(url);
+            updateNavigationButtons();
+        } else if (webView.canGoForward()) {
+            webView.goForward();
+        }
+    }
+
+    private void updateNavigationButtons() {
+        boolean canGoBack = (currentHistoryIndex > 0) || webView.canGoBack();
+        boolean canGoForward = (currentHistoryIndex < urlHistory.size() - 1) || webView.canGoForward();
+        
+        backButton.setEnabled(canGoBack);
+        forwardButton.setEnabled(canGoForward);
+        backButton.setAlpha(canGoBack ? 1.0f : 0.5f);
+        forwardButton.setAlpha(canGoForward ? 1.0f : 0.5f);
+    }
+
+    private void saveCurrentUrl(String url) {
+        if (url != null && !url.equals("about:blank")) {
+            sharedPreferences.edit().putString(LAST_URL_KEY, url).apply();
+        }
     }
 
     private void showMenu(View view) {
         PopupMenu popup = new PopupMenu(this, view);
-        // Aapko res/menu/browser_menu.xml file banani hogi
-        // Agar nahi hai to main neeche uska code de raha hoon
         popup.getMenuInflater().inflate(R.menu.browser_menu, popup.getMenu());
 
         popup.setOnMenuItemClickListener(item -> {
             int id = item.getItemId();
             if (id == R.id.action_cookies) {
-                // --- NAYA STEP 3: Launcher ke zariye Activity ko start karein ---
                 Intent intent = new Intent(this, CookieManagerActivity.class);
                 intent.putExtra("current_url", webView.getUrl());
-                cookieActivityLauncher.launch(intent); // startActivity ke bajaye launch istemal karein
+                cookieActivityLauncher.launch(intent);
                 return true;
-            }
-            // Yahan aap Import Cookies ke liye bhi alag se option daal sakte hain
-            // aur usay bhi launcher se hi call kar sakte hain.
-            else if (id == R.id.action_clear_data) {
+            } else if (id == R.id.action_clear_data) {
                 clearBrowserData();
+                return true;
+            } else if (id == R.id.action_history) {
+                showHistoryMenu(view);
                 return true;
             }
             return false;
@@ -183,18 +332,55 @@ public class MainActivity extends AppCompatActivity {
         popup.show();
     }
 
+    private void showHistoryMenu(View view) {
+        if (urlHistory.isEmpty()) {
+            Toast.makeText(this, "No history available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        PopupMenu historyPopup = new PopupMenu(this, view);
+        
+        // Add recent URLs to menu (last 10)
+        int startIndex = Math.max(0, urlHistory.size() - 10);
+        for (int i = urlHistory.size() - 1; i >= startIndex; i--) {
+            String url = urlHistory.get(i);
+            String displayUrl = url.length() > 50 ? url.substring(0, 50) + "..." : url;
+            historyPopup.getMenu().add(0, i, 0, displayUrl);
+        }
+
+        historyPopup.setOnMenuItemClickListener(item -> {
+            int index = item.getItemId();
+            if (index >= 0 && index < urlHistory.size()) {
+                currentHistoryIndex = index;
+                webView.loadUrl(urlHistory.get(index));
+                updateNavigationButtons();
+            }
+            return true;
+        });
+
+        historyPopup.show();
+    }
+
     private void clearBrowserData() {
         webView.clearCache(true);
         webView.clearHistory();
         webView.clearFormData();
         android.webkit.CookieManager.getInstance().removeAllCookies(null);
         android.webkit.CookieManager.getInstance().flush();
+        
+        // Clear custom history
+        urlHistory.clear();
+        currentHistoryIndex = -1;
+        
+        // Clear saved URL
+        sharedPreferences.edit().remove(LAST_URL_KEY).apply();
+        
         Toast.makeText(this, "All browser data cleared!", Toast.LENGTH_SHORT).show();
-        webView.loadUrl("https://www.google.com" ); // Sab clear karke home par jayein
+        loadUrl("https://www.google.com");
     }
 
     private void updateLockIcon(String url) {
-        if (url != null && url.startsWith("https://" )) {
+        if (url != null && url.startsWith("https://")) {
             lockIcon.setImageResource(R.drawable.ic_lock);
         } else {
             lockIcon.setImageResource(R.drawable.ic_search);
@@ -216,6 +402,16 @@ public class MainActivity extends AppCompatActivity {
             webView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Save current URL when app goes to background
+        String currentUrl = webView.getUrl();
+        if (currentUrl != null) {
+            saveCurrentUrl(currentUrl);
         }
     }
 }
