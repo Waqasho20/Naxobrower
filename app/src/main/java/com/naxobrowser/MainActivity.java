@@ -77,7 +77,15 @@ public class MainActivity extends AppCompatActivity {
                         if (reloadUrl != null && !reloadUrl.isEmpty()) {
                             webView.loadUrl(reloadUrl);
                             Toast.makeText(this, "Cookies imported. Reloading page...", Toast.LENGTH_SHORT).show();
-                        }
+                            @Override
+    protected void onPause() {
+        super.onPause();
+        String currentUrl = webView.getUrl();
+        if (currentUrl != null) {
+            saveCurrentUrl(currentUrl);
+        }
+    }
+}
                     }
                 });
 
@@ -141,9 +149,9 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setSaveFormData(true);
         webSettings.setSavePassword(true);
         
-        // User Agent - Real Desktop Chrome for better compatibility
-        String desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-        webSettings.setUserAgentString(desktopUserAgent);
+        // User Agent - Mobile for better compatibility with mobile sites
+        String mobileUserAgent = "Mozilla/5.0 (Linux; Android 11; SM-A307FN Build/RP1A.200720.012; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/138.0.7204.157 Mobile Safari/537.36";
+        webSettings.setUserAgentString(mobileUserAgent);
 
         // Cookie Management - ESSENTIAL
         CookieManager cookieManager = CookieManager.getInstance();
@@ -327,14 +335,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadUrl(String url) {
-        // Add extra headers for better compatibility
+        // Add proper headers matching the user agent
         Map<String, String> headers = new HashMap<>();
         headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
         headers.put("Accept-Language", "en-US,en;q=0.5");
-        headers.put("Accept-Encoding", "gzip, deflate");
+        headers.put("Accept-Encoding", "gzip, deflate, br");
         headers.put("DNT", "1");
         headers.put("Connection", "keep-alive");
         headers.put("Upgrade-Insecure-Requests", "1");
+        headers.put("Sec-Fetch-Dest", "document");
+        headers.put("Sec-Fetch-Mode", "navigate");
+        headers.put("Sec-Fetch-Site", "none");
+        headers.put("Sec-Fetch-User", "?1");
         
         webView.loadUrl(url, headers);
     }
@@ -406,8 +418,18 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra("current_url", webView.getUrl());
                 cookieActivityLauncher.launch(intent);
                 return true;
+            } else if (id == R.id.action_import_cookies) {
+                // Import cookies functionality
+                Intent intent = new Intent(this, CookieManagerActivity.class);
+                intent.putExtra("import_mode", true);
+                intent.putExtra("current_url", webView.getUrl());
+                cookieActivityLauncher.launch(intent);
+                return true;
             } else if (id == R.id.action_clear_data) {
                 clearBrowserData();
+                return true;
+            } else if (id == R.id.action_settings) {
+                showSettingsDialog();
                 return true;
             }
             return false;
@@ -467,6 +489,47 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void showSettingsDialog() {
+        PopupMenu settingsPopup = new PopupMenu(this, menuIcon);
+        settingsPopup.getMenu().add(0, 1, 0, "Switch to Desktop Mode");
+        settingsPopup.getMenu().add(0, 2, 0, "Switch to Mobile Mode");
+        settingsPopup.getMenu().add(0, 3, 0, "Enable JavaScript");
+        settingsPopup.getMenu().add(0, 4, 0, "Disable JavaScript");
+        
+        settingsPopup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            WebSettings settings = webView.getSettings();
+            
+            switch (id) {
+                case 1: // Desktop Mode
+                    String desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+                    settings.setUserAgentString(desktopUA);
+                    webView.reload();
+                    Toast.makeText(this, "Switched to Desktop Mode", Toast.LENGTH_SHORT).show();
+                    break;
+                case 2: // Mobile Mode
+                    String mobileUA = "Mozilla/5.0 (Linux; Android 11; SM-A307FN Build/RP1A.200720.012; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/138.0.7204.157 Mobile Safari/537.36";
+                    settings.setUserAgentString(mobileUA);
+                    webView.reload();
+                    Toast.makeText(this, "Switched to Mobile Mode", Toast.LENGTH_SHORT).show();
+                    break;
+                case 3: // Enable JavaScript
+                    settings.setJavaScriptEnabled(true);
+                    webView.reload();
+                    Toast.makeText(this, "JavaScript Enabled", Toast.LENGTH_SHORT).show();
+                    break;
+                case 4: // Disable JavaScript
+                    settings.setJavaScriptEnabled(false);
+                    webView.reload();
+                    Toast.makeText(this, "JavaScript Disabled", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+            return true;
+        });
+        
+        settingsPopup.show();
+    }
+
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         View view = getCurrentFocus();
@@ -482,15 +545,6 @@ public class MainActivity extends AppCompatActivity {
             webView.goBack();
         } else {
             super.onBackPressed();
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        String currentUrl = webView.getUrl();
-        if (currentUrl != null) {
-            saveCurrentUrl(currentUrl);
         }
     }
 }
