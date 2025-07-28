@@ -1,4 +1,4 @@
-<!-- res/layout/activity_main_2.xml -->
+<?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -58,7 +58,8 @@
                 android:layout_centerVertical="true"
                 android:layout_toStartOf="@id/menuIcon"
                 android:padding="8dp"
-                android:src="@drawable/ic_shield" /> <!-- Yeh icon drawable mein add karein -->
+                android:src="@drawable/ic_shield"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
             <!-- Menu Icon -->
             <ImageView
@@ -68,7 +69,8 @@
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:padding="8dp"
-                android:src="@drawable/ic_menu_dots" /> <!-- Yeh icon drawable mein add karein -->
+                android:src="@drawable/ic_menu_dots"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
         </RelativeLayout>
 
@@ -81,18 +83,12 @@
             android:indeterminate="false"
             android:max="100"
             android:progress="0"
+            android:progressTint="#4285F4"
             android:visibility="gone" />
 
     </LinearLayout>
 
-    <!-- WebView to display content -->
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/toolbarLayout" />
-
-    <!-- Bottom Navigation (Aapke purane code mein yeh nahi tha, isko hata sakte hain agar nahi chahiye ) -->
+    <!-- Bottom Navigation - FIXED positioning -->
     <LinearLayout
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
@@ -100,7 +96,8 @@
         android:layout_alignParentBottom="true"
         android:background="#F5F5F5"
         android:orientation="horizontal"
-        android:gravity="center">
+        android:gravity="center"
+        android:elevation="4dp">
 
         <ImageView
             android:id="@+id/backButton"
@@ -109,7 +106,8 @@
             android:layout_weight="1"
             android:src="@drawable/ic_arrow_back"
             android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:alpha="0.5" />
 
         <ImageView
             android:id="@+id/forwardButton"
@@ -118,7 +116,8 @@
             android:layout_weight="1"
             android:src="@drawable/ic_arrow_forward"
             android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:alpha="0.5" />
 
         <ImageView
             android:id="@+id/homeButton"
@@ -127,7 +126,7 @@
             android:layout_weight="1"
             android:src="@drawable/ic_home"
             android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:background="?attr/selectableItemBackgroundBorderless" />
 
         <ImageView
             android:id="@+id/refreshButton"
@@ -136,7 +135,16 @@
             android:layout_weight="1"
             android:src="@drawable/ic_refresh"
             android:padding="12dp"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
     </LinearLayout>
+
+    <!-- WebView - FIXED to fit between toolbar and bottom nav -->
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/toolbarLayout"
+        android:layout_above="@id/bottomNav" />
 
 </RelativeLayout>
