@@ -117,8 +117,6 @@ public class MainActivity extends AppCompatActivity {
         
         // Cache Settings for better connectivity
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        webSettings.setAppCacheEnabled(true);
-        webSettings.setAppCachePath(getCacheDir().getAbsolutePath());
         
         // Enhanced User Agent
         String userAgent = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
@@ -215,6 +213,12 @@ public class MainActivity extends AppCompatActivity {
         homeButton.setOnClickListener(v -> loadUrl("https://www.google.com"));
         braveShieldIcon.setOnClickListener(v -> Toast.makeText(this, "Shield Clicked!", Toast.LENGTH_SHORT).show());
         menuIcon.setOnClickListener(this::showMenu);
+        
+        // Long press on menu icon to show history
+        menuIcon.setOnLongClickListener(v -> {
+            showHistoryMenu(v);
+            return true;
+        });
     }
 
     private void setupAddressBar() {
@@ -321,9 +325,6 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else if (id == R.id.action_clear_data) {
                 clearBrowserData();
-                return true;
-            } else if (id == R.id.action_history) {
-                showHistoryMenu(view);
                 return true;
             }
             return false;
