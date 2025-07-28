@@ -18,7 +18,6 @@ import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -53,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREF_NAME = "BrowserPrefs";
     private static final String LAST_URL_KEY = "lastUrl";
 
-    // ActivityResultLauncher for CookieManagerActivity
+    // ActivityResultLauncher for Activities
     private ActivityResultLauncher<Intent> cookieActivityLauncher;
 
     @Override
@@ -76,21 +75,13 @@ public class MainActivity extends AppCompatActivity {
                         String reloadUrl = result.getData().getStringExtra("reload_url");
                         if (reloadUrl != null && !reloadUrl.isEmpty()) {
                             webView.loadUrl(reloadUrl);
-                            Toast.makeText(this, "Cookies imported. Reloading page...", Toast.LENGTH_SHORT).show();
-                            @Override
-    protected void onPause() {
-        super.onPause();
-        String currentUrl = webView.getUrl();
-        if (currentUrl != null) {
-            saveCurrentUrl(currentUrl);
-        }
-    }
-}
+                            Toast.makeText(this, "Page reloaded successfully", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
 
-        // Setup WebView with COMPLETE configuration
-        setupWebView();
+        // Setup WebView for MOBILE ONLY
+        setupMobileWebView();
         
         // Setup Button Listeners
         setupButtonListeners();
@@ -115,58 +106,52 @@ public class MainActivity extends AppCompatActivity {
         homeButton = findViewById(R.id.homeButton);
     }
 
-    private void setupWebView() {
-        // Enable debugging for testing
+    private void setupMobileWebView() {
+        // Enable debugging
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
 
         WebSettings webSettings = webView.getSettings();
         
-        // COMPLETE WebView Settings for maximum compatibility
+        // MOBILE OPTIMIZED Settings
         webSettings.setJavaScriptEnabled(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
         webSettings.setLoadsImagesAutomatically(true);
+        
+        // Mobile viewport settings
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
         webSettings.setSupportZoom(true);
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         
-        // Network Settings - CRITICAL for connection issues
+        // Security and content settings
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
+        webSettings.setGeolocationEnabled(true);
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+        
+        // Network settings
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         webSettings.setBlockNetworkImage(false);
         webSettings.setBlockNetworkLoads(false);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowContentAccess(true);
         
-        // Media and Content Settings
-        webSettings.setMediaPlaybackRequiresUserGesture(false);
-        webSettings.setGeolocationEnabled(true);
-        webSettings.setSaveFormData(true);
-        webSettings.setSavePassword(true);
-        
-        // User Agent - Mobile for better compatibility with mobile sites
+        // MOBILE User Agent - Latest Chrome Mobile
         String mobileUserAgent = "Mozilla/5.0 (Linux; Android 11; SM-A307FN Build/RP1A.200720.012; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/138.0.7204.157 Mobile Safari/537.36";
         webSettings.setUserAgentString(mobileUserAgent);
 
-        // Cookie Management - ESSENTIAL
+        // Cookie Management
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
         cookieManager.setAcceptThirdPartyCookies(webView, true);
 
-        // WebViewClient with COMPLETE error handling and URL interception
+        // WebViewClient with mobile-focused error handling
         webView.setWebViewClient(new WebViewClient() {
             
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                // Add custom headers to all requests
-                return super.shouldInterceptRequest(view, request);
-            }
-
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
@@ -183,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 
-                // Load all HTTP/HTTPS URLs in WebView
+                // Load in WebView
                 return false;
             }
 
@@ -199,16 +184,19 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 
-                // Inject CSS to improve mobile experience
-                String css = "javascript:(function() {" +
-                        "var meta = document.createElement('meta');" +
+                // Inject mobile viewport meta tag for better mobile experience
+                String mobileCSS = "javascript:(function() {" +
+                        "var meta = document.querySelector('meta[name=viewport]');" +
+                        "if (!meta) {" +
+                        "meta = document.createElement('meta');" +
                         "meta.name = 'viewport';" +
-                        "meta.content = 'width=device-width, initial-scale=1.0';" +
-                        "document.getElementsByTagName('head')[0].appendChild(meta);" +
+                        "document.head.appendChild(meta);" +
+                        "}" +
+                        "meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';" +
                         "})()";
-                view.loadUrl(css);
+                view.loadUrl(mobileCSS);
                 
-                // Add to history
+                // Update navigation
                 addToHistory(url);
                 updateNavigationButtons();
                 saveCurrentUrl(url);
@@ -223,12 +211,20 @@ public class MainActivity extends AppCompatActivity {
                     String failedUrl = request.getUrl().toString();
                     String errorDescription = error.getDescription().toString();
                     
-                    // Try alternative approaches
+                    // Mobile-specific fallbacks
                     if (failedUrl.contains("facebook.com") && !failedUrl.contains("m.facebook.com")) {
                         String mobileUrl = failedUrl.replace("www.facebook.com", "m.facebook.com")
                                                    .replace("facebook.com", "m.facebook.com");
-                        Toast.makeText(MainActivity.this, "Trying mobile version...", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Loading mobile version...", Toast.LENGTH_SHORT).show();
                         view.loadUrl(mobileUrl);
+                        return;
+                    }
+                    
+                    if (failedUrl.contains("twitter.com") && !failedUrl.contains("mobile.twitter.com")) {
+                        String mobileTwitter = failedUrl.replace("www.twitter.com", "mobile.twitter.com")
+                                                        .replace("twitter.com", "mobile.twitter.com");
+                        Toast.makeText(MainActivity.this, "Loading mobile version...", Toast.LENGTH_SHORT).show();
+                        view.loadUrl(mobileTwitter);
                         return;
                     }
                     
@@ -243,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                     // Try without www
                     if (failedUrl.contains("www.")) {
                         String noWwwUrl = failedUrl.replace("www.", "");
-                        Toast.makeText(MainActivity.this, "Trying without www...", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Retrying connection...", Toast.LENGTH_SHORT).show();
                         view.loadUrl(noWwwUrl);
                         return;
                     }
@@ -254,12 +250,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                // Always proceed with SSL errors to avoid connection blocks
+                // Accept SSL errors for better connectivity
                 handler.proceed();
             }
         });
 
-        // WebChromeClient for better JavaScript support
+        // WebChromeClient for enhanced functionality
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
@@ -285,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
         forwardButton.setOnClickListener(v -> goForwardInHistory());
         refreshButton.setOnClickListener(v -> webView.reload());
         homeButton.setOnClickListener(v -> loadUrl("https://www.google.com"));
-        braveShieldIcon.setOnClickListener(v -> Toast.makeText(this, "Shield Clicked!", Toast.LENGTH_SHORT).show());
+        braveShieldIcon.setOnClickListener(v -> Toast.makeText(this, "Shield Active!", Toast.LENGTH_SHORT).show());
         menuIcon.setOnClickListener(this::showMenu);
         
         // Long press on menu icon to show history
@@ -335,10 +331,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadUrl(String url) {
-        // Add proper headers matching the user agent
+        // Mobile-optimized headers
         Map<String, String> headers = new HashMap<>();
         headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        headers.put("Accept-Language", "en-US,en;q=0.5");
+        headers.put("Accept-Language", "en-US,en;q=0.9");
         headers.put("Accept-Encoding", "gzip, deflate, br");
         headers.put("DNT", "1");
         headers.put("Connection", "keep-alive");
@@ -419,9 +415,7 @@ public class MainActivity extends AppCompatActivity {
                 cookieActivityLauncher.launch(intent);
                 return true;
             } else if (id == R.id.action_import_cookies) {
-                // Import cookies functionality
-                Intent intent = new Intent(this, CookieManagerActivity.class);
-                intent.putExtra("import_mode", true);
+                Intent intent = new Intent(this, CookieImportActivity.class);
                 intent.putExtra("current_url", webView.getUrl());
                 cookieActivityLauncher.launch(intent);
                 return true;
@@ -429,7 +423,7 @@ public class MainActivity extends AppCompatActivity {
                 clearBrowserData();
                 return true;
             } else if (id == R.id.action_settings) {
-                showSettingsDialog();
+                showMobileSettings();
                 return true;
             }
             return false;
@@ -438,9 +432,46 @@ public class MainActivity extends AppCompatActivity {
         popup.show();
     }
 
+    private void showMobileSettings() {
+        PopupMenu settingsPopup = new PopupMenu(this, menuIcon);
+        settingsPopup.getMenu().add(0, 1, 0, "Enable JavaScript");
+        settingsPopup.getMenu().add(0, 2, 0, "Disable JavaScript");
+        settingsPopup.getMenu().add(0, 3, 0, "Clear Cache");
+        settingsPopup.getMenu().add(0, 4, 0, "Reload Page");
+        
+        settingsPopup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            WebSettings settings = webView.getSettings();
+            
+            switch (id) {
+                case 1: // Enable JavaScript
+                    settings.setJavaScriptEnabled(true);
+                    webView.reload();
+                    Toast.makeText(this, "JavaScript Enabled", Toast.LENGTH_SHORT).show();
+                    break;
+                case 2: // Disable JavaScript
+                    settings.setJavaScriptEnabled(false);
+                    webView.reload();
+                    Toast.makeText(this, "JavaScript Disabled", Toast.LENGTH_SHORT).show();
+                    break;
+                case 3: // Clear Cache
+                    webView.clearCache(true);
+                    Toast.makeText(this, "Cache Cleared", Toast.LENGTH_SHORT).show();
+                    break;
+                case 4: // Reload Page
+                    webView.reload();
+                    Toast.makeText(this, "Page Reloaded", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+            return true;
+        });
+        
+        settingsPopup.show();
+    }
+
     private void showHistoryMenu(View view) {
         if (urlHistory.isEmpty()) {
-            Toast.makeText(this, "No history available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No browsing history", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -449,7 +480,7 @@ public class MainActivity extends AppCompatActivity {
         int startIndex = Math.max(0, urlHistory.size() - 10);
         for (int i = urlHistory.size() - 1; i >= startIndex; i--) {
             String url = urlHistory.get(i);
-            String displayUrl = url.length() > 50 ? url.substring(0, 50) + "..." : url;
+            String displayUrl = url.length() > 40 ? url.substring(0, 40) + "..." : url;
             historyPopup.getMenu().add(0, i, 0, displayUrl);
         }
 
@@ -489,47 +520,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void showSettingsDialog() {
-        PopupMenu settingsPopup = new PopupMenu(this, menuIcon);
-        settingsPopup.getMenu().add(0, 1, 0, "Switch to Desktop Mode");
-        settingsPopup.getMenu().add(0, 2, 0, "Switch to Mobile Mode");
-        settingsPopup.getMenu().add(0, 3, 0, "Enable JavaScript");
-        settingsPopup.getMenu().add(0, 4, 0, "Disable JavaScript");
-        
-        settingsPopup.setOnMenuItemClickListener(item -> {
-            int id = item.getItemId();
-            WebSettings settings = webView.getSettings();
-            
-            switch (id) {
-                case 1: // Desktop Mode
-                    String desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-                    settings.setUserAgentString(desktopUA);
-                    webView.reload();
-                    Toast.makeText(this, "Switched to Desktop Mode", Toast.LENGTH_SHORT).show();
-                    break;
-                case 2: // Mobile Mode
-                    String mobileUA = "Mozilla/5.0 (Linux; Android 11; SM-A307FN Build/RP1A.200720.012; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/138.0.7204.157 Mobile Safari/537.36";
-                    settings.setUserAgentString(mobileUA);
-                    webView.reload();
-                    Toast.makeText(this, "Switched to Mobile Mode", Toast.LENGTH_SHORT).show();
-                    break;
-                case 3: // Enable JavaScript
-                    settings.setJavaScriptEnabled(true);
-                    webView.reload();
-                    Toast.makeText(this, "JavaScript Enabled", Toast.LENGTH_SHORT).show();
-                    break;
-                case 4: // Disable JavaScript
-                    settings.setJavaScriptEnabled(false);
-                    webView.reload();
-                    Toast.makeText(this, "JavaScript Disabled", Toast.LENGTH_SHORT).show();
-                    break;
-            }
-            return true;
-        });
-        
-        settingsPopup.show();
-    }
-
     private void hideKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         View view = getCurrentFocus();
@@ -545,6 +535,15 @@ public class MainActivity extends AppCompatActivity {
             webView.goBack();
         } else {
             super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        String currentUrl = webView.getUrl();
+        if (currentUrl != null) {
+            saveCurrentUrl(currentUrl);
         }
     }
 }
