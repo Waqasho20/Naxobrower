@@ -1,0 +1,86 @@
+[
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/menu_browser_menu.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/menu/browser_menu.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_bg_address_bar.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/bg_address_bar.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_home.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_home.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_arrow_forward.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_arrow_forward.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_search.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_search.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_refresh.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_refresh.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_arrow_back.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_arrow_back.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_card_background.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/card_background.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/layout_activity_cookie_import.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/layout/activity_cookie_import.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_lock.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_lock.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/xml_network_security_config.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_button_background.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/button_background.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/layout_activity_main_2.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/layout/activity_main_2.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_cookie.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_cookie.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_lock_open.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_lock_open.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_shield.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_shield.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_url_edittext_background.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/url_edittext_background.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/layout_activity_cookie_manager.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/layout/activity_cookie_manager.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_menu_dots.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_menu_dots.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/layout_cookie_item.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/layout/cookie_item.xml"
+    },
+    {
+        "merged": "com.naxobrowser.app-merged_res-29:/drawable_ic_launcher.xml.flat",
+        "source": "com.naxobrowser.app-main-31:/drawable/ic_launcher.xml"
+    }
+]

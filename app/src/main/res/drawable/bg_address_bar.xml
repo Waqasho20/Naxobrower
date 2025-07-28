@@ -1,0 +1,7 @@
+<!-- res/drawable/bg_address_bar.xml -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFF" /> <!-- Background color safed -->
+    <corners android:radius="24dp" /> <!-- Gol corners -->
+    <stroke android:width="1dp" android:color="#E0E0E0" /> <!-- Halka sa border -->
+</shape>

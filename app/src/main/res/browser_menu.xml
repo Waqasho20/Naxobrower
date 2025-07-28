@@ -1,0 +1,9 @@
+<!-- res/menu/browser_menu.xml -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_cookies"
+        android:title="Manage Cookies" />
+    <item
+        android:id="@+id/action_clear_data"
+        and roid:title="Clear Browsing Data" />
+</menu>
