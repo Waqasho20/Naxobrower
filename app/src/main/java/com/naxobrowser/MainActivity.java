@@ -6,16 +6,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Patterns;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.CookieManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -23,7 +26,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -32,7 +34,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -77,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
 
-        // Setup WebView
+        // Setup WebView with COMPLETE configuration
         setupWebView();
         
         // Setup Button Listeners
@@ -104,33 +108,77 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupWebView() {
+        // Enable debugging for testing
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
         WebSettings webSettings = webView.getSettings();
         
-        // Basic Settings
+        // COMPLETE WebView Settings for maximum compatibility
         webSettings.setJavaScriptEnabled(true);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setDomStorageEnabled(true);
+        webSettings.setDatabaseEnabled(true);
         webSettings.setLoadsImagesAutomatically(true);
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
-        webSettings.setDatabaseEnabled(true);
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
+        webSettings.setSupportZoom(true);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         
-        // Network and Cache Settings for better connectivity
+        // Network Settings - CRITICAL for connection issues
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         webSettings.setBlockNetworkImage(false);
         webSettings.setBlockNetworkLoads(false);
-        webSettings.setGeolocationEnabled(true);
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
-        webSettings.setAllowFileAccessFromFileURLs(true);
-        webSettings.setAllowUniversalAccessFromFileURLs(true);
         
-        // Enhanced User Agent - Real Chrome mobile
-        String userAgent = "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.193 Mobile Safari/537.36";
-        webSettings.setUserAgentString(userAgent);
+        // Media and Content Settings
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+        webSettings.setGeolocationEnabled(true);
+        webSettings.setSaveFormData(true);
+        webSettings.setSavePassword(true);
+        
+        // User Agent - Real Desktop Chrome for better compatibility
+        String desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        webSettings.setUserAgentString(desktopUserAgent);
 
-        // WebViewClient with enhanced error handling
+        // Cookie Management - ESSENTIAL
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(webView, true);
+
+        // WebViewClient with COMPLETE error handling and URL interception
         webView.setWebViewClient(new WebViewClient() {
+            
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                // Add custom headers to all requests
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                
+                // Handle special schemes
+                if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                        intent.setData(request.getUrl());
+                        startActivity(intent);
+                        return true;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                // Load all HTTP/HTTPS URLs in WebView
+                return false;
+            }
+
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
@@ -143,15 +191,19 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 
-                // Add to history if it's a new URL
+                // Inject CSS to improve mobile experience
+                String css = "javascript:(function() {" +
+                        "var meta = document.createElement('meta');" +
+                        "meta.name = 'viewport';" +
+                        "meta.content = 'width=device-width, initial-scale=1.0';" +
+                        "document.getElementsByTagName('head')[0].appendChild(meta);" +
+                        "})()";
+                view.loadUrl(css);
+                
+                // Add to history
                 addToHistory(url);
-                
-                // Update navigation buttons
                 updateNavigationButtons();
-                
-                // Save current URL
                 saveCurrentUrl(url);
-                
                 progressBar.setVisibility(View.GONE);
             }
 
@@ -160,51 +212,46 @@ public class MainActivity extends AppCompatActivity {
                 super.onReceivedError(view, request, error);
                 
                 if (request.isForMainFrame()) {
-                    String errorUrl = request.getUrl().toString();
+                    String failedUrl = request.getUrl().toString();
+                    String errorDescription = error.getDescription().toString();
                     
-                    // Try alternative approaches for failed URLs
-                    if (errorUrl.contains("facebook.com")) {
-                        // Try mobile version for Facebook
-                        String mobileUrl = errorUrl.replace("www.facebook.com", "m.facebook.com");
-                        if (!mobileUrl.equals(errorUrl)) {
-                            view.loadUrl(mobileUrl);
-                            return;
-                        }
+                    // Try alternative approaches
+                    if (failedUrl.contains("facebook.com") && !failedUrl.contains("m.facebook.com")) {
+                        String mobileUrl = failedUrl.replace("www.facebook.com", "m.facebook.com")
+                                                   .replace("facebook.com", "m.facebook.com");
+                        Toast.makeText(MainActivity.this, "Trying mobile version...", Toast.LENGTH_SHORT).show();
+                        view.loadUrl(mobileUrl);
+                        return;
                     }
                     
-                    Toast.makeText(MainActivity.this, "Connection failed: " + error.getDescription(), Toast.LENGTH_LONG).show();
+                    // Try HTTPS if HTTP failed
+                    if (failedUrl.startsWith("http://")) {
+                        String httpsUrl = failedUrl.replace("http://", "https://");
+                        Toast.makeText(MainActivity.this, "Trying secure connection...", Toast.LENGTH_SHORT).show();
+                        view.loadUrl(httpsUrl);
+                        return;
+                    }
+                    
+                    // Try without www
+                    if (failedUrl.contains("www.")) {
+                        String noWwwUrl = failedUrl.replace("www.", "");
+                        Toast.makeText(MainActivity.this, "Trying without www...", Toast.LENGTH_SHORT).show();
+                        view.loadUrl(noWwwUrl);
+                        return;
+                    }
+                    
+                    Toast.makeText(MainActivity.this, "Connection failed: " + errorDescription, Toast.LENGTH_LONG).show();
                 }
             }
 
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                // Accept SSL errors to avoid connection issues
+                // Always proceed with SSL errors to avoid connection blocks
                 handler.proceed();
-            }
-
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                
-                // Handle special URL schemes
-                if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW);
-                        intent.setData(request.getUrl());
-                        startActivity(intent);
-                        return true;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-                
-                // Load URL in the same WebView
-                view.loadUrl(url);
-                return true;
             }
         });
 
-        // WebChromeClient
+        // WebChromeClient for better JavaScript support
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
@@ -214,6 +261,13 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     progressBar.setVisibility(View.VISIBLE);
                 }
+            }
+
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, android.webkit.JsResult result) {
+                Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+                result.confirm();
+                return true;
             }
         });
     }
@@ -243,17 +297,7 @@ public class MainActivity extends AppCompatActivity {
                     hideKeyboard();
                     urlEditText.clearFocus();
                     
-                    String urlToLoad;
-                    if (Patterns.WEB_URL.matcher(input).matches() || 
-                        input.contains(".") && !input.contains(" ")) {
-                        urlToLoad = input.startsWith("http") ? input : "https://" + input;
-                    } else {
-                        try {
-                            urlToLoad = "https://www.google.com/search?q=" + URLEncoder.encode(input, "UTF-8");
-                        } catch (Exception e) {
-                            urlToLoad = "https://www.google.com/search?q=" + input.replace(" ", "+");
-                        }
-                    }
+                    String urlToLoad = processUrlInput(input);
                     loadUrl(urlToLoad);
                 }
                 return true;
@@ -262,8 +306,37 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private String processUrlInput(String input) {
+        // If it looks like a URL
+        if (Patterns.WEB_URL.matcher(input).matches() || 
+            (input.contains(".") && !input.contains(" "))) {
+            
+            if (!input.startsWith("http://") && !input.startsWith("https://")) {
+                return "https://" + input;
+            }
+            return input;
+        } 
+        // Otherwise, search
+        else {
+            try {
+                return "https://www.google.com/search?q=" + URLEncoder.encode(input, "UTF-8");
+            } catch (Exception e) {
+                return "https://www.google.com/search?q=" + input.replace(" ", "+");
+            }
+        }
+    }
+
     private void loadUrl(String url) {
-        webView.loadUrl(url);
+        // Add extra headers for better compatibility
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        headers.put("Accept-Language", "en-US,en;q=0.5");
+        headers.put("Accept-Encoding", "gzip, deflate");
+        headers.put("DNT", "1");
+        headers.put("Connection", "keep-alive");
+        headers.put("Upgrade-Insecure-Requests", "1");
+        
+        webView.loadUrl(url, headers);
     }
 
     private void loadInitialPage() {
@@ -272,13 +345,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void addToHistory(String url) {
-        if (url != null && !url.equals("about:blank")) {
-            // Remove any URLs after current index (when going back and then to new URL)
+        if (url != null && !url.equals("about:blank") && !url.startsWith("javascript:")) {
             if (currentHistoryIndex < urlHistory.size() - 1) {
                 urlHistory = urlHistory.subList(0, currentHistoryIndex + 1);
             }
             
-            // Add new URL if it's different from the last one
             if (urlHistory.isEmpty() || !urlHistory.get(urlHistory.size() - 1).equals(url)) {
                 urlHistory.add(url);
                 currentHistoryIndex = urlHistory.size() - 1;
@@ -353,7 +424,6 @@ public class MainActivity extends AppCompatActivity {
 
         PopupMenu historyPopup = new PopupMenu(this, view);
         
-        // Add recent URLs to menu (last 10)
         int startIndex = Math.max(0, urlHistory.size() - 10);
         for (int i = urlHistory.size() - 1; i >= startIndex; i--) {
             String url = urlHistory.get(i);
@@ -365,7 +435,7 @@ public class MainActivity extends AppCompatActivity {
             int index = item.getItemId();
             if (index >= 0 && index < urlHistory.size()) {
                 currentHistoryIndex = index;
-                webView.loadUrl(urlHistory.get(index));
+                loadUrl(urlHistory.get(index));
                 updateNavigationButtons();
             }
             return true;
@@ -378,14 +448,11 @@ public class MainActivity extends AppCompatActivity {
         webView.clearCache(true);
         webView.clearHistory();
         webView.clearFormData();
-        android.webkit.CookieManager.getInstance().removeAllCookies(null);
-        android.webkit.CookieManager.getInstance().flush();
+        CookieManager.getInstance().removeAllCookies(null);
+        CookieManager.getInstance().flush();
         
-        // Clear custom history
         urlHistory.clear();
         currentHistoryIndex = -1;
-        
-        // Clear saved URL
         sharedPreferences.edit().remove(LAST_URL_KEY).apply();
         
         Toast.makeText(this, "All browser data cleared!", Toast.LENGTH_SHORT).show();
@@ -421,7 +488,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // Save current URL when app goes to background
         String currentUrl = webView.getUrl();
         if (currentUrl != null) {
             saveCurrentUrl(currentUrl);
