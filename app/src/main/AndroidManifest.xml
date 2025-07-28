@@ -1,23 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.naxobrowser">
+    xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Sirf yeh do network permissions zaroori hain -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+
+    <!-- Storage permissions ko filhal hata dein. Agar download feature add karna hai,
+         to uske liye alag se modern tareeqa istemal hoga. -->
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="Naxo Browser"
-        android:theme="@style/AppTheme"
-        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true"
+        
+        <!-- Yakeeni banayein ke theme aapke styles.xml se match karti hai -->
+        android:theme="@style/Theme.NaxoBrowser" 
+        
+        <!-- Yeh do lines network masail ke liye ahem hain -->
         android:usesCleartextTraffic="true"
-        android:hardwareAccelerated="true">
+        android:networkSecurityConfig="@xml/network_security_config"
+        
+        android:hardwareAccelerated="true"
+        tools:targetApi="31">
         
         <activity
             android:name=".MainActivity"
@@ -38,4 +44,3 @@
             
     </application>
 </manifest>
-
