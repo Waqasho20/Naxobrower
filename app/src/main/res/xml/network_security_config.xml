@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">facebook.com</domain>
-        <domain includeSubdomains="true">m.facebook.com</domain>
-        <domain includeSubdomains="true">instagram.com</domain>
-        <domain includeSubdomains="true">twitter.com</domain>
-        <domain includeSubdomains="true">youtube.com</domain>
-        <domain includeSubdomains="true">google.com</domain>
-    </domain-config>
-    
+    <!-- Allow ALL traffic - no restrictions -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
             <certificates src="user"/>
         </trust-anchors>
     </base-config>
+    
+    <!-- Override for debugging - accept all certificates -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system"/>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
 </network-security-config>
