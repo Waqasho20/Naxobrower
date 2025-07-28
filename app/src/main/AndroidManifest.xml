@@ -2,29 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Sirf yeh do network permissions zaroori hain -->
+    <!-- Internet access ke liye zaroori permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Storage permissions ko filhal hata dein. Agar download feature add karna hai,
-         to uske liye alag se modern tareeqa istemal hoga. -->
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="Naxo Browser"
         android:supportsRtl="true"
-        
-        <!-- Yakeeni banayein ke theme aapke styles.xml se match karti hai -->
-        android:theme="@style/Theme.NaxoBrowser" 
-        
-        <!-- Yeh do lines network masail ke liye ahem hain -->
-        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.NaxoBrowser"
         android:networkSecurityConfig="@xml/network_security_config"
-        
-        android:hardwareAccelerated="true"
-        tools:targetApi="31">
-        
+        android:usesCleartextTraffic="true"
+        tools:ignore="GoogleAppIndexingWarning">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -33,7 +24,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
+
         <activity
             android:name=".CookieManagerActivity"
             android:label="Cookie Manager" />
@@ -41,6 +32,7 @@
         <activity
             android:name=".CookieImportActivity"
             android:label="Import Cookies" />
-            
+
     </application>
+
 </manifest>
